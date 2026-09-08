@@ -29,3 +29,7 @@ def score_day(history: list[dict], today: dict) -> dict:
             "status": "insufficient_history",
             "note": f"Need >= {WARMUP_DAYS} prior days, have {len(history)}. Scoring skipped.",
         }
+
+    window_records = history[-WARMUP_DAYS:] + [today]
+    window_df = pd.DataFrame(window_records)
+    featured = build_features(window_df)
