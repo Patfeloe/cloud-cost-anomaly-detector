@@ -33,3 +33,19 @@ def score_day(history: list[dict], today: dict) -> dict:
     window_records = history[-WARMUP_DAYS:] + [today]
     window_df = pd.DataFrame(window_records)
     featured = build_features(window_df)
+
+    today_row = featured.iloc[[-1]]  # last row = today, after build_features
+    if today_row[FEATURE_COLUMNS].isna().any(axis=None):
+        # Shouldn't happen if history length check passed, but guard anyway
+        # rather than silently scoring on NaNs.
+        return {
+            "date": today["date"],
+            "daily_cost": today["daily_cost"],
+            "is_anomaly": None,
+            "anomaly_score": None,
+            "service_breakdown": today.get("service_breakdown"),
+            "cost_usd": today.get("cost_usd"),
+            "fx_rate": today.get("fx_rate"),
+            "status": "insufficient_history",
+            "note": "Rolling features still NaN despite history length check; skipping.",
+        }
