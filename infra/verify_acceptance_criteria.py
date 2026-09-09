@@ -63,3 +63,56 @@ def group_sustained_events(df: pd.DataFrame) -> list[list[int]]:
         events.append(current)
     return events
 
+def evaluate(test_df: pd.DataFrame, y_pred_is_anomaly: np.ndarray) -> dict:
+    """
+    Row-level metrics (all anomaly types) + point-only row recall +
+    sustained-increase event-level recall, per the spec's eval section.
+    """
+    y_true = test_df["is_anomaly"].values
+
+    row_precision = precision_score(y_true, y_pred_is_anomaly, zero_division=0)
+    row_recall = recall_score(y_true, y_pred_is_anomaly, zero_division=0)
+    row_f1 = f1_score(y_true, y_pred_is_anomaly, zero_division=0)
+    cm = confusion_matrix(y_true, y_pred_is_anomaly).tolist()
+
+    point_mask = test_df["anomaly_type"].isin(["spike", "drop"]).values
+    point_total = point_mask.sum()
+    point_hits = int((y_pred_is_anomaly[point_mask] & y_true[point_mask]).sum()) if point_total else 0
+    point_recall = point_hits / point_total if point_total else None
+
+    events = group_sustained_events(test_df)
+    event_total = len(events)
+    event_hits = sum(1 for ev in events if y_pred_is_anomaly[ev].any())
+    event_recall = event_hits / event_total if event_total else None
+
+    # Combined "hit-based" recall used for the acceptance bar: point anomalies
+    # scored per-row, sustained_increase scored per-event (spec-mandated).
+    combined_hits = point_hits + event_hits
+    combined_total = point_total + event_total
+    combined_recall = combined_hits / combined_total if combined_total else None
+
+    return {
+        "row_level_precision": row_precision,
+        "row_level_recall": row_recall,
+        "row_level_f1": row_f1,
+        "confusion_matrix": cm,  # [[TN, FP], [FN, TP]]
+        "point_anomaly_row_recall": point_recall,
+        "point_anomaly_row_count": int(point_total),
+        "sustained_event_recall": event_recall,
+        "sustained_event_count": event_total,
+        "combined_hit_based_recall": combined_recall,
+        "combined_total_anomalies": combined_total,
+    }
+
+
+def train_and_evaluate():
+    # --- Generate synthetic data (same generator used for both demo + training) ---
+    df, gen_config = generate_synthetic_spend(
+        start_date=date(2018, 1, 1),
+        num_days=3000,
+        anomaly_rate=0.06,
+        anomaly_types=["spike", "drop", "sustained_increase"],
+        fx_volatility=0.08,
+        seed=42,
+    )
+
