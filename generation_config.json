@@ -1,0 +1,17 @@
+{
+  "start_date": "2025-01-01",
+  "num_days": 180,
+  "anomaly_rate": 0.06,
+  "anomaly_types": [
+    "spike",
+    "drop",
+    "sustained_increase"
+  ],
+  "fx_volatility": 0.08,
+  "seed": 42,
+  "base_daily_cost_usd": 100.0,
+  "weekend_discount": 0.25,
+  "trend_per_day": 0.15,
+  "noise_std_frac": 0.05,
+  "fx_start": 18.5
+}
